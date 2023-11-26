@@ -1,3 +1,5 @@
 *.pdf
+*.xml
+*.json
 
 node_modules/

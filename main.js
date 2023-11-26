@@ -1,14 +1,40 @@
 const axios = require('axios');
 const prompt = require('prompt-sync')();
-const fs = require('fs');
 const pdf = require('pdfkit'); // WYMAGANIA biblioteka pdf: 20%
+const { writeFileSync, createWriteStream} = require('fs');
 
-const tests = [ // WYMAGANIA testy: min 2x pozytywny + 1x negatywny: 30%
+
+const tests = [ // WYMAGANIA testy I: min 2x pozytywny + 1x negatywny: 30%
     { name: 'Poznan', latitude: 52.4064, longtitude: 16.9252 },
     { name: 'Londyn', latitude: 51.5074, longtitude: 0.1278 },
     { name: 'Tokio', latitude: 35.6762, longtitude: 139.6503 },
     { name: 'Sztokholm (test negatywny)', latitude: 59.3293 }, // negatywny - brak części współrzędnych
     { name: 'Berlin', latitude: 52.5200, longtitude: 13.4050 },
+];
+
+const mockData = [ // WYMAGANIA testy II: 2x pozytywny, 1x negatywny: 30%
+    {
+        name: 'Nibylandia',
+        main: {
+            temp: 99,
+            humidity: 0,
+            pressure: 10,
+        }
+    },
+    {
+        name: 'Atlantyda',
+        main: {
+            temp: 5.2,
+            humidity: Infinity,
+            pressure: 100900,
+        }
+    },
+    {
+        name: 'Złalandia',
+        main: {
+            // test negatywny
+        }
+    },
 ];
 
 const getMessage = (temp, humidity, pressure) => {
@@ -27,10 +53,72 @@ async function getWeather(city) {
     return response.data;
 }
 
+async function saveToFile(cityName, weather) {
+    const { temp, humidity, pressure } = weather.main;
+    if (temp === undefined || humidity === undefined || pressure === undefined) {
+        console.log('Brak pewnych danych pogodowych dla miasta: ' + ((cityName) ?? '(nie podano nazwy miasta)') + '.');
+        console.log('Wyłączenie programu.')
+        process.exit(-1);
+    }
+    console.log(getMessage(temp, humidity, pressure));
+    try {
+        const fileName = `Weather in ${cityName}`;
+
+        console.log((`W jakim formacie chcesz zapisać dane lokalizacji: ${cityName ?? '(nie podano nazwy lokalizacji)'} (potwierdź ENTER):
+    1. JSON
+    2. PDF
+    3. XML
+    `))
+        const choice = prompt();
+
+        switch (choice) {
+            case '1':
+                saveToJson(fileName, { temp, humidity, pressure });
+                break;
+            case '2':
+                saveToPdf(fileName, { temp, humidity, pressure });
+                break;
+            case '3':
+                saveToXml(fileName, { temp, humidity, pressure });
+                break;
+            default:
+                console.log('Niepoprawna opcja. Wyłączenie programu.');
+                process.exit(-1);
+        }
+
+    } catch (e) {
+        console.log('Nie udało się zapisać danych pogodowych dla miasta: ' + ((cityName) ?? '(nie podano nazwy miasta)') + '.');
+        console.log('Wiadomość błędu: ', e.message);
+    }
+}
+
+async function saveToPdf(cityName, { temp, humidity, pressure }) {
+    let doc = new pdf();
+    doc.pipe(createWriteStream(`${cityName}.pdf`)); // WYMAGANIA wykorzystanie strumienia: 10%
+    doc.text(getMessage(temp, humidity, pressure));
+    doc.end();
+}
+
+async function saveToJson(cityName, { temp, humidity, pressure }) {
+    const serializedJson = JSON.stringify(getMessage(temp, humidity, pressure)); // WYMAGANIA serializacja JSONa (deserializacją zajmuje się axios w getWeather - używa JSON.parse): 10%
+
+    writeFileSync(`${cityName}.json`, serializedJson);
+}
+async function saveToXml(cityName, { temp, humidity, pressure }) {
+    const serializedXml = `<weather>
+    <cityName>${cityName}</cityName>
+    <temp>${temp}</temp>
+    <humidity>${humidity}</humidity>
+    <pressure>${pressure}</pressure>
+    </weather>`;
+    writeFileSync(`${cityName}.xml`, serializedXml);
+}
+
 async function main() {
     console.log(`Wybierz opcję (potwierdź ENTER):
     1. Wybierz miasto z listy
     2. Podaj współrzędne lokalizacji
+    3. Wykonaj test zapisywania ze zmockowanymi danymi
     `);
     const chosenOption = prompt();
     if (chosenOption === '1') {
@@ -38,21 +126,10 @@ async function main() {
 
         console.log('Wybierz miasto (potwierdź ENTER):');
         const chosenCity = prompt();
-        const city = tests[chosenCity - 1];
-
-        const cityJson = JSON.stringify(city); // serializacja JSONa (deserializacją zajmuje się axios - używa JSON.parse): 10%
-        fs.writeFileSync(`${city.name} - request data.json`, cityJson); // bonus feature - zapis danych użytych do zapytania do pliku JSON.
-        console.log(cityJson)
+        const city = tests[Number(chosenCity) - 1];
 
         const weather = await getWeather(city);
-        const { temp, humidity, pressure } = weather.main;
-
-        console.log(getMessage(temp, humidity, pressure));
-
-        let doc = new pdf();
-        doc.pipe(fs.createWriteStream(`Weather in ${city.name}.pdf`)); // WYMAGANIA swykorzystanie strumienia
-        doc.text(getMessage(temp, humidity, pressure));
-        doc.end();
+        saveToFile(city.name, weather);
     } else if (chosenOption === '2') {
         console.log('Podaj nazwę własną lokalizacji (potwierdź ENTER):');
         const cityName = prompt();
@@ -62,15 +139,13 @@ async function main() {
         const longtitude = prompt();
 
         const weather = await getWeather({ cityName: cityName, latitude, longtitude });
-        const { temp, humidity, pressure } = weather.main;
-
-        console.log(getMessage(temp, humidity, pressure));
-
-        let doc = new pdf();
-        doc.pipe(fs.createWriteStream(`Weather in ${latitude}, ${longtitude}.pdf`)); // WYMAGANIA wykorzystanie strumienia: 10%
-        doc.text(getMessage(temp, humidity, pressure));
-        doc.end();
-    } else {
+        saveToFile(cityName, weather);
+    } else if (chosenOption === '3') {
+        mockData.forEach((city) => {
+            saveToFile((city && city?.name), city);
+        });
+    }
+    else {
         console.log('Niepoprawna opcja. Wyłączenie programu.');
         process.exit(-1);
     }
