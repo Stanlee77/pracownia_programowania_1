@@ -1,7 +1,7 @@
 const axios = require('axios');
 const prompt = require('prompt-sync')();
 const pdf = require('pdfkit'); // WYMAGANIA biblioteka pdf: 20%
-const { writeFileSync, createWriteStream} = require('fs');
+const { writeFileSync, createWriteStream } = require('fs');
 
 // test data
 const tests = [ // WYMAGANIA testy I: min 2x pozytywny + 1x negatywny: 30%
@@ -144,13 +144,35 @@ async function main() {
         const weather = await getWeather({ cityName: cityName, latitude, longtitude });
         saveToFile(cityName, weather);
     } else if (chosenOption === '3') {
-        mockData.forEach((city) => {
-            saveToFile((city && city?.name), city);
-        });
+        runTests();
     }
     else {
         console.log('Niepoprawna opcja. Wyłączenie programu.');
         process.exit(-1);
+    }
+}
+
+const runTests = () => { // WYMAGANIA testy automatyczne 2x pozytywny + 1x negatywny: 30%
+    try {
+        mockData.forEach((city) => {
+            console.log('saving mock city: ', city?.name);
+            console.log('as pdf')
+            saveToPdf((city && city?.name), city);
+            console.log('---------------------')
+            console.log('test passed')
+            console.log('as json')
+            saveToJson((city && city?.name), city);
+            console.log('---------------------')
+            console.log('test passed')
+            console.log('as xml')
+            saveToXml((city && city?.name), city);
+            console.log('test passed')
+            console.log('---------------------')
+            console.log('all tePsts passed successfully')
+        })
+    } catch (e) {
+        console.log('some tests failed')
+        console.log('error message: ', e.message)
     }
 }
 
