@@ -3,7 +3,7 @@ const prompt = require('prompt-sync')();
 const pdf = require('pdfkit'); // WYMAGANIA biblioteka pdf: 20%
 const { writeFileSync, createWriteStream} = require('fs');
 
-
+// test data
 const tests = [ // WYMAGANIA testy I: min 2x pozytywny + 1x negatywny: 30%
     { name: 'Poznan', latitude: 52.4064, longtitude: 16.9252 },
     { name: 'Londyn', latitude: 51.5074, longtitude: 0.1278 },
@@ -37,6 +37,7 @@ const mockData = [ // WYMAGANIA testy II: 2x pozytywny, 1x negatywny: 30%
     },
 ];
 
+// feature functions
 const getMessage = (temp, humidity, pressure) => {
     return `Temperatura: ${Math.floor(temp * 10) / 10} st. C, Wilgotnosc: ${humidity}%, Cisnienie: ${pressure}hPa`;
 }
@@ -53,6 +54,7 @@ async function getWeather(city) {
     return response.data;
 }
 
+// export to file functions
 async function saveToFile(cityName, weather) {
     const { temp, humidity, pressure } = weather.main;
     if (temp === undefined || humidity === undefined || pressure === undefined) {
@@ -114,6 +116,7 @@ async function saveToXml(cityName, { temp, humidity, pressure }) {
     writeFileSync(`${cityName}.xml`, serializedXml);
 }
 
+// main
 async function main() {
     console.log(`Wybierz opcję (potwierdź ENTER):
     1. Wybierz miasto z listy
